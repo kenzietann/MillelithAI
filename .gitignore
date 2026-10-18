@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Data and model files (too big for git, store them elsewhere)
+data/raw/
+data/processed/
+checkpoints/
+*.npz
+*.safetensors
+
+# Editor and OS
+.DS_Store
+.vscode/
