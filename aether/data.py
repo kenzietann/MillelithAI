@@ -1,4 +1,5 @@
 import random
+import mlx.core as mx
 
 
 def get_pair(token_ids, start, context_length):
@@ -15,4 +16,4 @@ def get_batch(token_ids, batch_size, context_length):
         inputs, targets = get_pair(token_ids, start, context_length)
         batch_inputs.append(inputs)
         batch_targets.append(targets)
-    return batch_inputs, batch_targets
+    return mx.array(batch_inputs), mx.array(batch_targets)
