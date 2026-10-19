@@ -74,3 +74,10 @@ class TransformerModel(LanguageModel):
         for block in self.blocks:
             embeddings = block(embeddings)
         return self.output_layer(self.final_norm(embeddings))
+
+
+MODEL_CLASSES = {
+    "bigram": BigramModel,
+    "attention": AttentionModel,
+    "transformer": TransformerModel,
+}
