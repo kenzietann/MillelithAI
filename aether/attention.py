@@ -31,3 +31,19 @@ class SelfAttentionHead(nn.Module):
 
         attention_weights = mx.softmax(scores, axis=-1)
         return attention_weights @ values
+
+
+class MultiHeadAttention(nn.Module):
+    """Several attention heads in parallel, each free to look for a different pattern."""
+
+    def __init__(self, embedding_size, num_heads):
+        super().__init__()
+        assert embedding_size % num_heads == 0, "embedding_size must divide evenly by num_heads"
+        head_size = embedding_size // num_heads
+        self.heads = [SelfAttentionHead(embedding_size, head_size) for _ in range(num_heads)]
+        self.output_projection = nn.Linear(embedding_size, embedding_size)
+
+    def __call__(self, embeddings):
+        head_outputs = [head(embeddings) for head in self.heads]
+        combined = mx.concatenate(head_outputs, axis=-1)
+        return self.output_projection(combined)
