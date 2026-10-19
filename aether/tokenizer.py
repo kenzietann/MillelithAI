@@ -17,5 +17,5 @@ class CharTokenizer:
             raise ValueError(f"Character {error} is not in the vocabulary") from error
 
     def decode(self, token_ids):
-        """List of token IDs -> text."""
+        """List of token IDs -> text."""                                            
         return "".join(self.id_to_char[token_id] for token_id in token_ids)
