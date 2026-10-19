@@ -2,8 +2,9 @@ from pathlib import Path
 
 from datasets import load_dataset
 
-OUTPUT_PATH = Path("data/raw/fineweb_edu_sample.txt")
-NUM_DOCUMENTS = 15000
+OUTPUT_PATH = Path("data/raw/fineweb_edu_300mb.txt")
+NUM_DOCUMENTS = 65000  # about 4.7 KB per document, so roughly 300 MB
+PROGRESS_EVERY = 5000
 
 
 def main():
@@ -24,6 +25,8 @@ def main():
                 break
             output_file.write(document["text"] + "\n\n")
             documents_written += 1
+            if documents_written % PROGRESS_EVERY == 0:
+                print(f"{documents_written} / {NUM_DOCUMENTS} documents", flush=True)
 
     size_in_mb = OUTPUT_PATH.stat().st_size / 1_000_000
     if documents_written == 0 or size_in_mb == 0:
