@@ -41,7 +41,8 @@ data. Lower loss is better.
 | Bigram | ~0.01M | 2.53 |
 | One attention head (64 dim, context 32) | ~0.03M | 2.41 |
 | Transformer (4 layers, 128 dim) | 0.82M | ~1.6 |
-| Transformer (6 layers, 256 dim) | 4.80M | ~1.37 |
+| Transformer (6 layers, 256 dim), constant lr 1e-3 | 4.80M | ~1.37 |
+| Same model, lr 3e-4 with warmup and cosine decay | 4.80M | ~1.29 |
 
 Training speed on one M4 Max, from `scripts/benchmark.py`:
 
@@ -91,9 +92,10 @@ aether/
   model.py        bigram, attention and transformer language models
   train.py        training loop
   evaluate.py     averaged loss on held-out data
+  schedule.py     learning rate warmup and cosine decay
   checkpoint.py   save and load models
   generate.py     write text from a saved checkpoint
-scripts/          download_dataset.py, benchmark.py
+scripts/          download_dataset.py, benchmark.py, lr_sweep.py
 tests/            small tests so we know things actually work
 data/             datasets, not tracked in git
 checkpoints/      saved model weights, not tracked in git
