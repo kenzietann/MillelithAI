@@ -6,6 +6,7 @@ import mlx.nn as nn
 import mlx.optimizers as optim
 from mlx.utils import tree_flatten
 
+from aether.checkpoint import save_checkpoint
 from aether.data import get_batch
 from aether.evaluate import estimate_loss
 from aether.model import TransformerModel
@@ -35,13 +36,14 @@ def main():
     validation_ids = token_ids[split_index:]
     print(f"{len(token_ids):,} tokens, vocab size {tokenizer.vocab_size}")
 
-    model = TransformerModel(
-        tokenizer.vocab_size,
+    # one dict drives both building the model and the checkpoint, so they can't drift apart
+    model_config = dict(
         context_length=CONTEXT_LENGTH,
         embedding_size=EMBEDDING_SIZE,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
     )
+    model = TransformerModel(tokenizer.vocab_size, **model_config)
     num_parameters = sum(p.size for _, p in tree_flatten(model.parameters()))
     print(f"{num_parameters / 1e6:.2f}M parameters")
 
@@ -64,6 +66,8 @@ def main():
                 f"step {step}: train {train_loss:.3f}, val {validation_loss:.3f}, "
                 f"{tokens_per_second:,.0f} tokens/s"
             )
+
+    save_checkpoint(model, tokenizer, "checkpoints/transformer", "transformer", model_config)
 
     start = mx.array([[0]])
     generated = model.generate(start, max_new_tokens=300)
