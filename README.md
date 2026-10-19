@@ -23,8 +23,10 @@ the honest status:
 - [x] Training on a real dataset (FineWeb-Edu sample)
 - [x] Checkpoints (save and reload any model)
 - [x] Benchmark script (tokens per second, memory)
-- [ ] Real tokenizer (BPE)
-- [x] First 4.8M parameter model (about 25 minutes to train on one M4 Max)
+- [x] Byte pair encoding (BPE) tokenizer, 4096 tokens
+- [x] Learning rate warmup, cosine decay and a learning rate sweep
+- [x] First 4.8M and 6.9M parameter models (about 10 to 25 minutes on one M4 Max)
+- [x] More data (315 MB, about 90 million tokens)
 - [ ] Bigger models
 - [ ] Code and cybersecurity data
 
@@ -33,16 +35,24 @@ but doesn't make sense, and we're not going to pretend otherwise.
 
 ## Numbers so far
 
-All on the same FineWeb-Edu sample, character-level, measured on validation
-data. Lower loss is better.
+All on the same FineWeb-Edu sample and the same validation text. Loss per
+token can't be compared between tokenizers, so everything is in bits per
+character (lower is better). The character-level rows were converted from
+their original loss per character.
 
-| Model | Params | Validation loss |
-|---|---|---|
-| Bigram | ~0.01M | 2.53 |
-| One attention head (64 dim, context 32) | ~0.03M | 2.41 |
-| Transformer (4 layers, 128 dim) | 0.82M | ~1.6 |
-| Transformer (6 layers, 256 dim), constant lr 1e-3 | 4.80M | ~1.37 |
-| Same model, lr 3e-4 with warmup and cosine decay | 4.80M | ~1.29 |
+| Model | Tokenizer | Params | Validation bits/char |
+|---|---|---|---|
+| Bigram | characters | ~0.01M | 3.65 |
+| One attention head (64 dim, context 32) | characters | ~0.03M | 3.48 |
+| Transformer (4 layers, 128 dim) | characters | 0.82M | ~2.3 |
+| Transformer (6 layers, 256 dim), constant lr 1e-3 | characters | 4.80M | ~1.99 |
+| Same model, lr 3e-4 with warmup and cosine decay | characters | 4.80M | ~1.86 |
+| Transformer (6 layers, 256 dim), same schedule, 70 MB of text | BPE 4096 | 6.85M | ~1.66 |
+| Same model, 315 MB of text (one pass) | BPE 4096 | 6.85M | ~1.59 |
+
+The BPE model has more parameters (its embedding tables are bigger), so part of
+the gain over the character-level rows is not only the tokenizer. The 70 MB run
+saw its data about 2.2 times, the 315 MB run saw it once.
 
 Training speed on one M4 Max, from `scripts/benchmark.py`:
 
@@ -86,6 +96,7 @@ on real throughput numbers from our machines.
 ```
 aether/
   tokenizer.py    character-level tokenizer
+  bpe.py          byte pair encoding tokenizer
   data.py         turns token IDs into input/target batches
   attention.py    self-attention head and multi-head attention
   transformer.py  feed-forward layer and transformer block

@@ -7,18 +7,18 @@ from mlx.utils import tree_flatten
 
 from aether.model import TransformerModel
 
-VOCAB_SIZE = 95
+VOCAB_SIZE = 4096  # matches the BPE tokenizer in train.py
 BATCH_SIZE = 32
 WARMUP_STEPS = 5
 MEASURED_STEPS = 30
 
 # (name, embedding_size, num_heads, num_layers, context_length)
 CONFIGS = [
-    ("current", 128, 4, 4, 64),
-    ("wider", 192, 6, 6, 64),
-    ("deeper", 256, 8, 6, 64),
+    ("current", 256, 8, 6, 64),
     ("longer context", 256, 8, 6, 128),
-    ("big", 384, 8, 8, 128),
+    ("wider", 384, 8, 6, 128),
+    ("wider and deeper", 384, 8, 8, 128),
+    ("big", 512, 8, 8, 128),
 ]
 
 
