@@ -24,7 +24,8 @@ the honest status:
 - [x] Checkpoints (save and reload any model)
 - [x] Benchmark script (tokens per second, memory)
 - [ ] Real tokenizer (BPE)
-- [ ] Bigger models (the 4.8M run is next)
+- [x] First 4.8M parameter model (about 25 minutes to train on one M4 Max)
+- [ ] Bigger models
 - [ ] Code and cybersecurity data
 
 Aether can't do anything useful yet. It writes text that looks like English
@@ -40,6 +41,7 @@ data. Lower loss is better.
 | Bigram | ~0.01M | 2.53 |
 | One attention head (64 dim, context 32) | ~0.03M | 2.41 |
 | Transformer (4 layers, 128 dim) | 0.82M | ~1.6 |
+| Transformer (6 layers, 256 dim) | 4.80M | ~1.37 |
 
 Training speed on one M4 Max, from `scripts/benchmark.py`:
 
