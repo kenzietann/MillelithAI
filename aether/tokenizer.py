@@ -19,3 +19,12 @@ class CharTokenizer:
     def decode(self, token_ids):
         """List of token IDs -> text."""                                            
         return "".join(self.id_to_char[token_id] for token_id in token_ids)
+
+    def to_dict(self):
+        vocab = [self.id_to_char[token_id] for token_id in range(self.vocab_size)]
+        return {"type": "char", "vocab": vocab}
+
+    @classmethod
+    def from_dict(cls, data):
+        # the vocab is already sorted, so rebuilding from it gives the exact same IDs
+        return cls("".join(data["vocab"]))
