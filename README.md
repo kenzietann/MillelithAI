@@ -10,19 +10,48 @@ help with authorized security work.
 
 ## Where things are right now
 
-Very early. Honestly, we're at the "teach it to guess the next character"
-stage. Here's the real status:
+Still early, but it's a real model now. A small transformer trains from
+scratch on a ~70 MB sample of web text and writes English-looking text. Here's
+the honest status:
 
 - [x] Character-level tokenizer
 - [x] Data loader (random batches of input/target pairs)
-- [ ] First model (bigram)
-- [ ] Training loop with loss logging
-- [ ] Text generation
-- [ ] Small transformer
+- [x] Bigram model, loss, training loop
+- [x] Text generation
+- [x] Self-attention and a small transformer (multi-head, residual, LayerNorm)
+- [x] Train/validation split and averaged evaluation loss
+- [x] Training on a real dataset (FineWeb-Edu sample)
+- [x] Checkpoints (save and reload any model)
+- [x] Benchmark script (tokens per second, memory)
 - [ ] Real tokenizer (BPE)
-- [ ] Training on real data
+- [ ] Bigger models (the 4.8M run is next)
+- [ ] Code and cybersecurity data
 
-Aether can't do anything useful yet, and we're not going to pretend it can.
+Aether can't do anything useful yet. It writes text that looks like English
+but doesn't make sense, and we're not going to pretend otherwise.
+
+## Numbers so far
+
+All on the same FineWeb-Edu sample, character-level, measured on validation
+data. Lower loss is better.
+
+| Model | Params | Validation loss |
+|---|---|---|
+| Bigram | ~0.01M | 2.53 |
+| One attention head (64 dim, context 32) | ~0.03M | 2.41 |
+| Transformer (4 layers, 128 dim) | 0.82M | ~1.6 |
+
+Training speed on one M4 Max, from `scripts/benchmark.py`:
+
+| Config | Params | Tokens/s | Peak memory |
+|---|---|---|---|
+| 4 layers, 128 dim, context 64 | 0.82M | ~154,000 | 0.24 GB |
+| 6 layers, 192 dim, context 64 | 2.71M | ~85,000 | 0.43 GB |
+| 6 layers, 256 dim, context 64 | 4.80M | ~56,000 | 0.57 GB |
+| 6 layers, 256 dim, context 128 | 4.82M | ~56,000 | 1.12 GB |
+| 8 layers, 384 dim, context 128 | 14.31M | ~25,000 | 2.01 GB |
+
+Memory isn't the limit on this machine, training time is.
 
 ## Why from scratch?
 
@@ -52,12 +81,20 @@ on real throughput numbers from our machines.
 ## Project layout
 
 ```
-aether/       the model code (tokenizer, data loading, and more to come)
-tests/        small tests so we know things actually work
-configs/      model and training configs (coming soon)
-data/         datasets, not tracked in git
-checkpoints/  saved model weights, not tracked in git
-docs/         notes and write-ups
+aether/
+  tokenizer.py    character-level tokenizer
+  data.py         turns token IDs into input/target batches
+  attention.py    self-attention head and multi-head attention
+  transformer.py  feed-forward layer and transformer block
+  model.py        bigram, attention and transformer language models
+  train.py        training loop
+  evaluate.py     averaged loss on held-out data
+  checkpoint.py   save and load models
+  generate.py     write text from a saved checkpoint
+scripts/          download_dataset.py, benchmark.py
+tests/            small tests so we know things actually work
+data/             datasets, not tracked in git
+checkpoints/      saved model weights, not tracked in git
 ```
 
 ## Running it
@@ -67,13 +104,40 @@ You'll need a Mac with Apple Silicon.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install mlx numpy
+pip install mlx numpy datasets
 ```
 
-Then run the tests from the repo root:
+Everything below runs from the repo root.
+
+Run a test (there's one per module in `tests/`):
 
 ```bash
-python -m tests.test_data
+python -m tests.test_transformer
+```
+
+Download the training data (about 70 MB, written to `data/raw/`):
+
+```bash
+python scripts/download_dataset.py
+```
+
+Train a model. The model size and settings are the constants at the top of
+`aether/train.py`. This saves a checkpoint to `checkpoints/transformer/`:
+
+```bash
+python -m aether.train
+```
+
+Write some text from the saved checkpoint:
+
+```bash
+python -m aether.generate --prompt "The " --max-new-tokens 300
+```
+
+See how fast different model sizes train on your machine:
+
+```bash
+python -m scripts.benchmark
 ```
 
 ## How we work
