@@ -1,46 +1,66 @@
+import time
+from pathlib import Path
+
 import mlx.core as mx
 import mlx.nn as nn
 import mlx.optimizers as optim
 
 from aether.data import get_batch
-from aether.model import BigramModel
+from aether.evaluate import estimate_loss
+from aether.model import AttentionModel
 from aether.tokenizer import CharTokenizer
-from aether.checkpoint import save_checkpoint
+
+DATA_PATH = Path("data/raw/fineweb_edu_sample.txt")
+BATCH_SIZE = 64
+CONTEXT_LENGTH = 8
+NUM_STEPS = 5000
+EVAL_EVERY = 500
+LEARNING_RATE = 3e-3
 
 
 def main():
-    text = (
-        """A good security assessment starts long before the first scan runs. The team sits down with the client, maps out what actually matters, and agrees on what is in scope and what is not. Servers, laptops, cloud accounts and the people who use them all tell a story, and the job is to read that story honestly. Most of the time the interesting problems are not exotic. They are an old password policy, a forgotten test server, or a backup bucket that someone left open on a Friday afternoon.
- 
-        Networks are a lot like cities. There are main roads, back alleys, and doors that nobody remembers installing. A tester walks the streets the way an attacker would, but leaves a clear trail and writes everything down. The report that comes out of it should be useful to an engineer at two in the morning: what was found, why it matters, and how to fix it without breaking production.
-        
-        Writing code for this kind of work rewards patience. Small tools that do one thing well are easier to trust than a giant framework nobody has read. A script that parses logs, a helper that checks certificate dates, a tiny model that learns the rhythm of a language: each one teaches something about how systems behave when nobody is watching. Keep the functions short, name things clearly, and test with real data, not only with the examples you wrote yourself.
-        
-        Language models, at their simplest, are just counting machines. Look at a few characters, remember what came next, and tally it up. Given enough text, the counts start to look like habits. After the letters t and h, the letter e is very likely. After q, almost always u. Nothing in the table understands meaning, yet the output can feel strangely familiar, like a sentence heard through a wall. More context makes the guesses sharper, but also makes the model memorize instead of generalize, so the trick is picking an order that is long enough to sound natural and short enough to still surprise you.
+    text = DATA_PATH.read_text(encoding="utf-8")
+    # keep plain ASCII only for now, so the vocab stays small
+    text = text.encode("ascii", errors="ignore").decode("ascii")
 
-        Good habits compound. Write things down, automate the boring parts, review your own work as if a stranger wrote it, and never stop being curious about how things break. The best engineers are not the ones who never make mistakes. They are the ones who leave the system a little clearer than they found it, and who share what they learned so the next person starts one step ahead."""
-    )
     tokenizer = CharTokenizer(text)
     token_ids = tokenizer.encode(text)
 
-    model = BigramModel(tokenizer.vocab_size)
-    optimizer = optim.AdamW(learning_rate=1e-2)
+    split_index = int(0.9 * len(token_ids))
+    train_ids = token_ids[:split_index]
+    validation_ids = token_ids[split_index:]
+    print(f"{len(token_ids):,} tokens, vocab size {tokenizer.vocab_size}")
+
+    model = AttentionModel(
+        tokenizer.vocab_size,
+        context_length=CONTEXT_LENGTH,
+        embedding_size=32,
+        head_size=32,
+    )
+    optimizer = optim.AdamW(learning_rate=LEARNING_RATE)
     loss_and_grad = nn.value_and_grad(model, model.loss)
 
-    for step in range(500):
-        inputs, targets = get_batch(token_ids, batch_size=32, context_length=8)
+    start_time = time.time()
+    for step in range(NUM_STEPS):
+        inputs, targets = get_batch(train_ids, BATCH_SIZE, CONTEXT_LENGTH)
         loss, grads = loss_and_grad(inputs, targets)
         optimizer.update(model, grads)
         mx.eval(model.parameters(), optimizer.state)
 
-        if step % 50 == 0:
-            print(f"step {step}: loss {loss.item():.3f}")
-
-    save_checkpoint(model, tokenizer, "checkpoints/bigram")
+        if step % EVAL_EVERY == 0:
+            train_loss = estimate_loss(model, train_ids, BATCH_SIZE, CONTEXT_LENGTH, num_batches=20)
+            validation_loss = estimate_loss(model, validation_ids, BATCH_SIZE, CONTEXT_LENGTH, num_batches=20)
+            tokens_seen = (step + 1) * BATCH_SIZE * CONTEXT_LENGTH
+            tokens_per_second = tokens_seen / (time.time() - start_time)
+            print(
+                f"step {step}: train {train_loss:.3f}, val {validation_loss:.3f}, "
+                f"{tokens_per_second:,.0f} tokens/s"
+            )
 
     start = mx.array([[0]])
-    generated = model.generate(start, max_new_tokens=200)
+    generated = model.generate(start, max_new_tokens=300)
     print(tokenizer.decode(generated[0].tolist()))
+
 
 if __name__ == "__main__":
     main()
