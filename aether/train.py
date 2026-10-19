@@ -10,17 +10,20 @@ from aether.checkpoint import save_checkpoint
 from aether.data import get_batch
 from aether.evaluate import estimate_loss
 from aether.model import TransformerModel
+from aether.schedule import make_learning_rate_schedule
 from aether.tokenizer import CharTokenizer
 
 DATA_PATH = Path("data/raw/fineweb_edu_sample.txt")
 BATCH_SIZE = 32
 CONTEXT_LENGTH = 64
-NUM_STEPS = 5000
-EVAL_EVERY = 500
-LEARNING_RATE = 1e-3
-EMBEDDING_SIZE = 128
-NUM_HEADS = 4
-NUM_LAYERS = 4
+NUM_STEPS = 30000
+EVAL_EVERY = 2500
+LEARNING_RATE = 3e-4
+MIN_LEARNING_RATE = 3e-5
+WARMUP_STEPS = 1000
+EMBEDDING_SIZE = 256
+NUM_HEADS = 8
+NUM_LAYERS = 6
 
 
 def main():
@@ -47,7 +50,10 @@ def main():
     num_parameters = sum(p.size for _, p in tree_flatten(model.parameters()))
     print(f"{num_parameters / 1e6:.2f}M parameters")
 
-    optimizer = optim.AdamW(learning_rate=LEARNING_RATE)
+    learning_rate_schedule = make_learning_rate_schedule(
+        LEARNING_RATE, MIN_LEARNING_RATE, WARMUP_STEPS, NUM_STEPS
+    )
+    optimizer = optim.AdamW(learning_rate=learning_rate_schedule)
     loss_and_grad = nn.value_and_grad(model, model.loss)
 
     start_time = time.time()
@@ -64,7 +70,7 @@ def main():
             tokens_per_second = tokens_seen / (time.time() - start_time)
             print(
                 f"step {step}: train {train_loss:.3f}, val {validation_loss:.3f}, "
-                f"{tokens_per_second:,.0f} tokens/s"
+                f"lr {optimizer.learning_rate.item():.1e}, {tokens_per_second:,.0f} tokens/s"
             )
 
     save_checkpoint(model, tokenizer, "checkpoints/transformer", "transformer", model_config)
