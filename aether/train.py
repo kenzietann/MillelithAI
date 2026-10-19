@@ -4,18 +4,22 @@ from pathlib import Path
 import mlx.core as mx
 import mlx.nn as nn
 import mlx.optimizers as optim
+from mlx.utils import tree_flatten
 
 from aether.data import get_batch
 from aether.evaluate import estimate_loss
-from aether.model import AttentionModel
+from aether.model import TransformerModel
 from aether.tokenizer import CharTokenizer
 
 DATA_PATH = Path("data/raw/fineweb_edu_sample.txt")
-BATCH_SIZE = 64
-CONTEXT_LENGTH = 8
+BATCH_SIZE = 32
+CONTEXT_LENGTH = 64
 NUM_STEPS = 5000
 EVAL_EVERY = 500
-LEARNING_RATE = 3e-3
+LEARNING_RATE = 1e-3
+EMBEDDING_SIZE = 128
+NUM_HEADS = 4
+NUM_LAYERS = 4
 
 
 def main():
@@ -31,12 +35,16 @@ def main():
     validation_ids = token_ids[split_index:]
     print(f"{len(token_ids):,} tokens, vocab size {tokenizer.vocab_size}")
 
-    model = AttentionModel(
+    model = TransformerModel(
         tokenizer.vocab_size,
         context_length=CONTEXT_LENGTH,
-        embedding_size=32,
-        head_size=32,
+        embedding_size=EMBEDDING_SIZE,
+        num_heads=NUM_HEADS,
+        num_layers=NUM_LAYERS,
     )
+    num_parameters = sum(p.size for _, p in tree_flatten(model.parameters()))
+    print(f"{num_parameters / 1e6:.2f}M parameters")
+
     optimizer = optim.AdamW(learning_rate=LEARNING_RATE)
     loss_and_grad = nn.value_and_grad(model, model.loss)
 
