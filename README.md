@@ -130,24 +130,30 @@ Run a test (there's one per module in `tests/`):
 python -m tests.test_transformer
 ```
 
-Download the training data (about 70 MB, written to `data/raw/`):
+Download the training data (about 315 MB, written to `data/raw/`):
 
 ```bash
 python scripts/download_dataset.py
 ```
 
-Train a model. The model size and settings are the constants at the top of
-`aether/train.py`. This saves a checkpoint to `checkpoints/transformer/`:
+Train a model. The defaults are the constants at the top of `aether/train.py`,
+and every one of them can be changed with a flag (`python -m aether.train --help`
+lists them all). The checkpoint goes to a folder named after the settings, for
+example `checkpoints/bpe4096-d384-l6-c128/`, so experiments don't overwrite
+each other:
 
 ```bash
 python -m aether.train
+python -m aether.train --context-length 128 --embedding-size 384 --num-steps 20000
 ```
 
-Write some text from the saved checkpoint:
+Write some text from a saved checkpoint:
 
 ```bash
-python -m aether.generate --prompt "The " --max-new-tokens 300
+python -m aether.generate --checkpoint checkpoints/bpe4096-d384-l6-c128 --prompt "The " --max-new-tokens 150
 ```
+
+(`--max-new-tokens` counts tokens, and one BPE token is about 3.5 characters.)
 
 See how fast different model sizes train on your machine:
 
