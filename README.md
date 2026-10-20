@@ -27,7 +27,9 @@ the honest status:
 - [x] Learning rate warmup, cosine decay and a learning rate sweep
 - [x] First 4.8M and 6.9M parameter models (about 10 to 25 minutes on one M4 Max)
 - [x] More data (315 MB, about 90 million tokens)
-- [ ] Bigger models
+- [x] A 13.8M parameter model (doubling the size gave about 0.07 bits/char)
+- [ ] A memory-friendly data pipeline for 1 GB and more of text
+- [ ] Bigger models and more data
 - [ ] Code and cybersecurity data
 
 Aether can't do anything useful yet. It writes text that looks like English
@@ -49,22 +51,29 @@ their original loss per character.
 | Same model, lr 3e-4 with warmup and cosine decay | characters | 4.80M | ~1.86 |
 | Transformer (6 layers, 256 dim), same schedule, 70 MB of text | BPE 4096 | 6.85M | ~1.66 |
 | Same model, 315 MB of text (one pass) | BPE 4096 | 6.85M | ~1.59 |
+| Same, context 128 instead of 64 | BPE 4096 | 6.87M | ~1.60 |
+| 6 layers, 384 dim, 315 MB (one pass) | BPE 4096 | 13.82M | 1.52 |
 
 The BPE model has more parameters (its embedding tables are bigger), so part of
 the gain over the character-level rows is not only the tokenizer. The 70 MB run
 saw its data about 2.2 times, the 315 MB run saw it once.
 
-Training speed on one M4 Max, from `scripts/benchmark.py`:
+Training speed on one M4 Max with the 4096-token BPE vocabulary, from
+`scripts/benchmark.py` (batch 16):
 
-| Config | Params | Tokens/s | Peak memory |
-|---|---|---|---|
-| 4 layers, 128 dim, context 64 | 0.82M | ~154,000 | 0.24 GB |
-| 6 layers, 192 dim, context 64 | 2.71M | ~85,000 | 0.43 GB |
-| 6 layers, 256 dim, context 64 | 4.80M | ~56,000 | 0.57 GB |
-| 6 layers, 256 dim, context 128 | 4.82M | ~56,000 | 1.12 GB |
-| 8 layers, 384 dim, context 128 | 14.31M | ~25,000 | 2.01 GB |
+| Config | Params | Tokens/s | Peak memory | Hours per 1B tokens |
+|---|---|---|---|---|
+| 6 layers, 384 dim, context 64 | 13.8M | ~33,500 | 0.6 GB | 8 |
+| 12 layers, 512 dim, context 128 | 42.1M | ~17,600 | 2.3 GB | 16 |
+| 12 layers, 768 dim, context 128 | 91.4M | ~9,000 | 3.5 GB | 31 |
+| 24 layers, 1024 dim, context 128 | 310.8M | ~2,800 | 9.6 GB | 101 |
 
-Memory isn't the limit on this machine, training time is.
+A 1B model needs about 17 GB for weights and optimizer alone, so it doesn't fit
+on the 32 GB machine. Bigger models use the GPU more efficiently (parameters
+times tokens/s goes up about 1.9x from 14M to 100M, then flattens), so the
+real limit on this machine is training time and the amount of data, not memory.
+At about 20 tokens per parameter, 91M needs roughly 1.8 billion tokens (about
+2.4 days here) and 311M roughly 6.2 billion (about 26 days).
 
 ## Why from scratch?
 
